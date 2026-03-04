@@ -1,0 +1,13 @@
+services:
+  - type: worker
+    name: crypto-bot-worker
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.13
+      - key: API_KEY
+        sync: false
+      - key: API_SECRET
+        sync: false

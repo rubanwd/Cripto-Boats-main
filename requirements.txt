@@ -1,0 +1,16 @@
+pybit==5.8.0
+pandas
+ta
+scikit-learn
+numpy
+tensorflow
+ccxt
+keras-tuner
+imbalanced-learn
+joblib
+aiohttp
+aiofiles
+nest-asyncio
+requests
+
+
