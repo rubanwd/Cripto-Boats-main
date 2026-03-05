@@ -213,3 +213,4 @@ python main.py
 - Report issues and suggest improvements
 - Help others get started
 
+PYTHON_VERSION - 3.12.0
