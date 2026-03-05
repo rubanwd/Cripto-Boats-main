@@ -10,7 +10,7 @@ import asyncio
 import ccxt.async_support as ccxt_async
 import logging
 import time
-from config import exchange_config
+from config import exchange_config, ITERATIONS_TO_SKIP_AFTER_CLOSE
 
 async def get_time_difference():
     try:
@@ -26,7 +26,7 @@ from logging_config import *
 from fetcher import fetch_markets, get_top_symbols, fetch_min_amounts, get_data_async
 from model_loader import load_lstm_model_func, load_random_forest_model_func
 from trainer import train_lstm_model, train_random_forest_model_wrapper
-from predictor import predict_signal_ensemble
+from predictor import predict_signal_ensemble, get_separate_signals
 from trade_manager import get_real_balance, manage_position
 from collections import deque
 from keras_tuner import RandomSearch # ВАЖНО: нужно добавить импорт RandomSearch
@@ -68,14 +68,69 @@ async def main():
                 return
         trades_deque = deque(maxlen=1000)
 
+        skipped_symbols = {}
+
         async def trade_signals():
             while True:
+                # 1. Update skipped symbols
+                symbols_to_remove = []
+                for sym in skipped_symbols:
+                    skipped_symbols[sym] -= 1
+                    if skipped_symbols[sym] <= 0:
+                        symbols_to_remove.append(sym)
+                for sym in symbols_to_remove:
+                    del skipped_symbols[sym]
+
+                # 2. Check open positions and close if opposite signal
+                try:
+                    positions_response = session.get_positions(category="linear", settleCoin="USDT")
+                    open_positions = [p for p in positions_response.get('result', {}).get('list', []) if float(p.get('size', '0')) > 0]
+                    
+                    for pos in open_positions:
+                        symbol = pos['symbol']
+                        side = pos['side']
+                        size = pos['size']
+                        
+                        try:
+                            df = await get_data_async(session, symbol, timeframe='15')
+                            if df is not None:
+                                lstm_signal, rf_signal = get_separate_signals(df, lstm_model, lstm_scaler, rf_model, rf_scaler)
+                                if lstm_signal is not None and rf_signal is not None:
+                                    should_close = False
+                                    if side == 'Buy' and (lstm_signal == 0 or rf_signal == 0):
+                                        should_close = True
+                                    elif side == 'Sell' and (lstm_signal == 1 or rf_signal == 1):
+                                        should_close = True
+                                    
+                                    if should_close:
+                                        close_side = 'Sell' if side == 'Buy' else 'Buy'
+                                        logging.info(f"Closing position for {symbol} due to opposite prediction. Side: {side}, LSTM: {lstm_signal}, RF: {rf_signal}")
+                                        try:
+                                            session.place_order(
+                                                category="linear",
+                                                symbol=symbol,
+                                                side=close_side,
+                                                orderType="Market",
+                                                qty=str(size),
+                                                reduceOnly=True
+                                            )
+                                            skipped_symbols[symbol] = ITERATIONS_TO_SKIP_AFTER_CLOSE
+                                            logging.info(f"Successfully closed {symbol}. Skipping for {ITERATIONS_TO_SKIP_AFTER_CLOSE} iterations.")
+                                        except Exception as e:
+                                            logging.error(f"Error closing position for {symbol}: {e}")
+                        except Exception as e:
+                            logging.error(f"Error processing open position for {symbol}: {e}")
+                except Exception as e:
+                    logging.error(f"Error fetching open positions: {e}")
+
                 usdt_balance = await get_real_balance(session)
                 if usdt_balance is None:
                     logging.warning("Failed to get USDT balance. Retrying in 5 seconds.")
                     await asyncio.sleep(5)
                     continue
                 for symbol in top_symbols:
+                    if symbol in skipped_symbols:
+                        continue
                     try:
                         df = await get_data_async(session, symbol, timeframe='15')
                         if df is not None:
@@ -87,7 +142,7 @@ async def main():
                                                       lstm_scaler, rf_model, rf_scaler)
                     except Exception as e:
                         logging.error(f"Error processing signal for {symbol}: {e}")
-                await asyncio.sleep(60)
+                await asyncio.sleep(600)
 
         await asyncio.gather(trade_signals())
     except KeyboardInterrupt:

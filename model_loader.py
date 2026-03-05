@@ -6,31 +6,22 @@ from models import FocalLoss
 # Устанавливаем переменную окружения для отключения предупреждений TensorFlow
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
+# Добавляем хак для Keras 3 для совместимости с инициализаторами из старых версий
+import keras
+if hasattr(keras, 'initializers'):
+    keras.initializers.Orthogonal = keras.initializers.Orthogonal
+    keras.initializers.GlorotUniform = keras.initializers.GlorotUniform
+    keras.initializers.Zeros = keras.initializers.Zeros
+
 def load_lstm_model_func():
     if os.path.exists('lstm_trading_model.h5') and os.path.exists('lstm_scaler.pkl'):
         try:
-            # Импортируем tensorflow и keras только внутри функции, чтобы избежать проблем с глобальным стейтом
-            import tensorflow as tf
             from tensorflow.keras.models import load_model
             
-            # Для Keras 3+ нужно явно регистрировать все инициализаторы
-            try:
-                from keras.src.initializers import Orthogonal, GlorotUniform, Zeros
-            except ImportError:
-                # Fallback для старых версий
-                from tensorflow.keras.initializers import Orthogonal, GlorotUniform, Zeros
-
-            custom_objects = {
-                'FocalLoss': FocalLoss,
-                'Orthogonal': Orthogonal,
-                'GlorotUniform': GlorotUniform,
-                'Zeros': Zeros
-            }
-            
-            # В Keras 3 format='h5' нужно указывать явно, если файл h5
             model = load_model('lstm_trading_model.h5', 
-                             custom_objects=custom_objects,
+                             custom_objects={'FocalLoss': FocalLoss},
                              compile=False)
+            
             scaler = joblib.load('lstm_scaler.pkl')
             return model, scaler
         except Exception as e:

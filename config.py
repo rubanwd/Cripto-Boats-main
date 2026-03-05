@@ -28,3 +28,7 @@ exchange_config['headers'] = {
     'Referer': 'https://bybit.com'
 }
 
+# Количество итераций для пропуска пары после закрытия позиции по противоположному сигналу
+ITERATIONS_TO_SKIP_AFTER_CLOSE = 2
+
+
