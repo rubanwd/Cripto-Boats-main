@@ -15,6 +15,7 @@ async def get_real_balance(session):
         response = session.get_wallet_balance(accountType="UNIFIED", coin="USDT")
         list_data = response.get('result', {}).get('list', [])
         if not list_data:
+            logging.warning(f"No wallet list data returned from session.get_wallet_balance: {response}")
             return 0.0
             
         usdt_balance = 0.0
@@ -23,6 +24,8 @@ async def get_real_balance(session):
         # Для Unified Trading Account доступная маржа находится в totalAvailableBalance
         if 'totalAvailableBalance' in account_data and account_data['totalAvailableBalance']:
             usdt_balance = float(account_data['totalAvailableBalance'])
+        elif 'totalEquity' in account_data and account_data['totalEquity']:
+            usdt_balance = float(account_data['totalEquity'])
             
         # Если totalAvailableBalance по какой-то причине пуст (например, не Unified), ищем в монетах
         if usdt_balance == 0.0:
@@ -32,13 +35,15 @@ async def get_real_balance(session):
                     balance_str = coin_data.get('equity', '0')
                     if not balance_str or float(balance_str) <= 0:  
                         balance_str = coin_data.get('walletBalance', '0')
+                    if not balance_str or float(balance_str) <= 0:  
+                        balance_str = coin_data.get('availableToWithdraw', '0')
                     if not balance_str:
                         balance_str = '0'
                     usdt_balance = float(balance_str)
                     break
                 
         if usdt_balance <= 0:
-            logging.warning(f"USDT balance is zero or negative ({usdt_balance}). Cannot trade.")
+            logging.warning(f"USDT balance is zero or negative ({usdt_balance}). Cannot trade. Raw account data: {account_data}")
             return 0.0
             
         return usdt_balance
