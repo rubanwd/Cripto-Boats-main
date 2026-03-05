@@ -13,13 +13,32 @@ async def get_real_balance(session):
     try:
         # accountType="UNIFIED" is typical for newer Bybit accounts
         response = session.get_wallet_balance(accountType="UNIFIED", coin="USDT")
+        
+        # Если API вернуло ошибку или пустой ответ
+        if not response or 'result' not in response or not response['result']:
+            logging.warning(f"Invalid or empty response from get_wallet_balance: {response}")
+            return 0.0
+            
         list_data = response.get('result', {}).get('list', [])
         if not list_data:
             logging.warning(f"No wallet list data returned from session.get_wallet_balance: {response}")
-            return 0.0
+            
+            # Попробуем запросить баланс обычного аккаунта деривативов, если UNIFIED не сработал
+            try:
+                response_contract = session.get_wallet_balance(accountType="CONTRACT", coin="USDT")
+                list_data = response_contract.get('result', {}).get('list', [])
+                if list_data:
+                    logging.info(f"Successfully fetched balance from CONTRACT account instead of UNIFIED.")
+                    account_data = list_data[0]
+                else:
+                    return 0.0
+            except Exception as e2:
+                logging.error(f"Failed to fetch CONTRACT balance as fallback: {e2}")
+                return 0.0
+        else:
+            account_data = list_data[0]
             
         usdt_balance = 0.0
-        account_data = list_data[0]
         
         # Для Unified Trading Account доступная маржа находится в totalAvailableBalance
         if 'totalAvailableBalance' in account_data and account_data['totalAvailableBalance']:
