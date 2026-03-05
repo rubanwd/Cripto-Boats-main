@@ -1,6 +1,7 @@
 import os
 import logging
 from tensorflow.keras.models import load_model
+from tensorflow.keras.initializers import Orthogonal, GlorotUniform, Zeros
 import joblib
 from models import FocalLoss
 
@@ -8,7 +9,12 @@ def load_lstm_model_func():
     if os.path.exists('lstm_trading_model.h5') and os.path.exists('lstm_scaler.pkl'):
         try:
             model = load_model('lstm_trading_model.h5',
-                               custom_objects={'FocalLoss': FocalLoss},
+                               custom_objects={
+                                   'FocalLoss': FocalLoss,
+                                   'Orthogonal': Orthogonal,
+                                   'GlorotUniform': GlorotUniform,
+                                   'Zeros': Zeros
+                               },
                                compile=False) # Compile false
             scaler = joblib.load('lstm_scaler.pkl')
             return model, scaler
