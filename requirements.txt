@@ -4,6 +4,7 @@ ta
 scikit-learn==1.6.0
 numpy==1.26.4
 tensorflow==2.16.1
+keras==3.13.2
 ccxt
 keras-tuner==1.4.8
 imbalanced-learn==0.14.1
