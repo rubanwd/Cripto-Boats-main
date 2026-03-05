@@ -142,7 +142,7 @@ async def main():
                                                       lstm_scaler, rf_model, rf_scaler)
                     except Exception as e:
                         logging.error(f"Error processing signal for {symbol}: {e}")
-                await asyncio.sleep(600)
+                await asyncio.sleep(300)
 
         await asyncio.gather(trade_signals())
     except KeyboardInterrupt:
