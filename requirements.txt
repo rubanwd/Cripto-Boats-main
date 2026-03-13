@@ -1,5 +1,5 @@
 pybit==5.8.0
-pandas==2.1.4
+pandas==2.2.2
 ta
 scikit-learn==1.6.0
 numpy==1.26.4
