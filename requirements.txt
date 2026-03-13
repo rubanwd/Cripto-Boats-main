@@ -1,17 +1,17 @@
 pybit==5.8.0
-pandas
+pandas==2.2.2
 ta
-scikit-learn
-numpy
-tensorflow
-keras
-ccxt
-keras-tuner
-imbalanced-learn
-joblib
-aiohttp
-aiofiles
-nest-asyncio
-requests
+scikit-learn==1.4.2
+numpy==1.26.4
+tensorflow==2.15.0
+keras==3.0.5
+ccxt==4.2.50
+keras-tuner==1.4.6
+imbalanced-learn==0.12.0
+joblib==1.3.2
+aiohttp==3.9.3
+aiofiles==23.2.1
+nest-asyncio==1.6.0
+requests==2.31.0
 
 
