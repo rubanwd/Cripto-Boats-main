@@ -6,7 +6,7 @@ from typing import List
 from pybit.unified_trading import HTTP
 import pandas as pd
 
-from config import API_KEY, API_SECRET
+from config import API_KEY, API_SECRET, TIMEFRAME
 
 async def fetch_markets(session):
     try:
@@ -39,7 +39,7 @@ async def fetch_min_amounts(session, top_symbols, markets):
             min_amounts[symbol] = 1.0
     return min_amounts
 
-async def get_data_async(session, symbol, timeframe='15', limit=500):
+async def get_data_async(session, symbol, timeframe=TIMEFRAME, limit=1000):
     try:
         # map timeframe to pybit format if needed (e.g., '15m' -> '15')
         tf = timeframe.replace('m', '')

@@ -14,6 +14,7 @@ from models import LSTMHyperModel
 from keras_tuner import RandomSearch
 from model_loader import load_lstm_model_func, load_random_forest_model_func
 from fetcher import get_data_async
+from config import TIME_STEPS
 
 async def train_lstm_model(exchange, symbols):
     X_list = []
@@ -22,13 +23,13 @@ async def train_lstm_model(exchange, symbols):
         df = await get_data_async(exchange, symbol)
         if df is not None:
             data = prepare_data(df)
-            if len(data) < 61:
+            if len(data) < TIME_STEPS + 1:
                 continue
             scaler = StandardScaler()
             data_scaled = scaler.fit_transform(data)
             X, y = [], []
-            for i in range(60, len(data_scaled) - 1):
-                X.append(data_scaled[i - 60:i])
+            for i in range(TIME_STEPS, len(data_scaled) - 1):
+                X.append(data_scaled[i - TIME_STEPS:i])
                 y.append(1 if df['close'].iloc[i + 1] > df['close'].iloc[i] else 0)
             if len(X) > 0:
                 X_list.append(np.array(X))
@@ -117,13 +118,13 @@ async def train_random_forest_model_wrapper(top_symbols, exchange):
         df = await get_data_async(exchange, symbol)
         if df is not None:
             data = prepare_data(df)
-            if len(data) < 61:
+            if len(data) < TIME_STEPS + 1:
                 continue
             scaler = StandardScaler()
             data_scaled = scaler.fit_transform(data)
             X, y = [], []
-            for i in range(60, len(data_scaled) - 1):
-                X.append(data_scaled[i - 60:i].flatten())
+            for i in range(TIME_STEPS, len(data_scaled) - 1):
+                X.append(data_scaled[i - TIME_STEPS:i].flatten())
                 y.append(1 if df['close'].iloc[i + 1] > df['close'].iloc[i] else 0)
             if len(X) > 0:
                 X_combined.extend(X)

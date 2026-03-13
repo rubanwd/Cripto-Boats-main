@@ -6,6 +6,7 @@ from tensorflow.keras import backend as K
 from keras_tuner import HyperModel, RandomSearch
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils import class_weight
+from config import TIME_STEPS
 
 class FocalLoss(Loss):
     def __init__(self, gamma=2., alpha=None, **kwargs):
@@ -37,7 +38,7 @@ def create_lstm_model(input_shape):
 class LSTMHyperModel(HyperModel):
     def build(self, hp):
         model = Sequential()
-        model.add(Input(shape=(60, 18)))
+        model.add(Input(shape=(TIME_STEPS, 18)))
         model.add(
             Bidirectional(
                 LSTM(units=hp.Int('units1', min_value=32, max_value=256, step=32),

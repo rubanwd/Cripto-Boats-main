@@ -5,6 +5,7 @@ import time
 import aiofiles
 from fetcher import get_data_async
 from predictor import predict_signal_ensemble
+from config import TIMEFRAME, TAKE_PROFIT_PCT, STOP_LOSS_PCT
 
 last_trade_time = {}
 lock = asyncio.Lock()
@@ -290,19 +291,33 @@ async def manage_position(session, symbol, signal, usdt_balance, min_amounts,
             )
             return
             
-        df = await get_data_async(session, symbol, timeframe='15', limit=100)
+        df = await get_data_async(session, symbol, timeframe=TIMEFRAME, limit=300)
         if df is None:
             return
             
         signal_pred = signal
         if signal_pred == 1:
             try:
+                # Рассчитываем цены для TP и SL
+                take_profit_price = price * (1 + TAKE_PROFIT_PCT)
+                stop_loss_price = price * (1 - STOP_LOSS_PCT)
+                
+                # Округляем цены до нужного количества знаков (как у текущей цены)
+                price_str = str(price)
+                if '.' in price_str:
+                    precision = len(price_str.split('.')[1])
+                    take_profit_price = round(take_profit_price, precision)
+                    stop_loss_price = round(stop_loss_price, precision)
+                
                 order = session.place_order(
                     category="linear",
                     symbol=symbol,
                     side="Buy",
                     orderType="Market",
-                    qty=str(position_size)
+                    qty=str(position_size),
+                    takeProfit=str(take_profit_price),
+                    stopLoss=str(stop_loss_price),
+                    tpslMode="Full" # TP/SL применяется ко всей позиции
                 )
                 
                 # Check success
@@ -321,17 +336,31 @@ async def manage_position(session, symbol, signal, usdt_balance, min_amounts,
                     }
                     await log_trade(trade)
                     logging.info(
-                        f"Opened long position for {symbol} at price {entry_price}")
+                        f"Opened LONG position for {symbol} at price {entry_price}. TP: {take_profit_price}, SL: {stop_loss_price}")
             except Exception as e:
                 logging.error(f"Error opening long position for {symbol}: {e}")
         elif signal_pred == 0:
             try:
+                # Рассчитываем цены для TP и SL для шорта
+                take_profit_price = price * (1 - TAKE_PROFIT_PCT)
+                stop_loss_price = price * (1 + STOP_LOSS_PCT)
+                
+                # Округляем цены до нужного количества знаков
+                price_str = str(price)
+                if '.' in price_str:
+                    precision = len(price_str.split('.')[1])
+                    take_profit_price = round(take_profit_price, precision)
+                    stop_loss_price = round(stop_loss_price, precision)
+                    
                 order = session.place_order(
                     category="linear",
                     symbol=symbol,
                     side="Sell",
                     orderType="Market",
-                    qty=str(position_size)
+                    qty=str(position_size),
+                    takeProfit=str(take_profit_price),
+                    stopLoss=str(stop_loss_price),
+                    tpslMode="Full" # TP/SL применяется ко всей позиции
                 )
                 
                 # Check success
@@ -350,7 +379,7 @@ async def manage_position(session, symbol, signal, usdt_balance, min_amounts,
                     }
                     await log_trade(trade)
                     logging.info(
-                        f"Opened short position for {symbol} at price {entry_price}")
+                        f"Opened SHORT position for {symbol} at price {entry_price}. TP: {take_profit_price}, SL: {stop_loss_price}")
             except Exception as e:
                 logging.error(f"Error opening short position for {symbol}: {e}")
         async with lock:

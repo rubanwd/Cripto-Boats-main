@@ -10,7 +10,7 @@ import asyncio
 import ccxt.async_support as ccxt_async
 import logging
 import time
-from config import exchange_config, ITERATIONS_TO_SKIP_AFTER_CLOSE
+from config import exchange_config, ITERATIONS_TO_SKIP_AFTER_CLOSE, TIMEFRAME, TAKE_PROFIT_PCT, STOP_LOSS_PCT
 
 async def get_time_difference():
     try:
@@ -92,21 +92,54 @@ async def main():
                         size = pos['size']
                         
                         try:
-                            df = await get_data_async(session, symbol, timeframe='15')
+                            # 1. Проверка по сигналам нейросетей
+                            df = await get_data_async(session, symbol, timeframe=TIMEFRAME)
                             if df is not None:
                                 lstm_signal, rf_signal = get_separate_signals(df, lstm_model, lstm_scaler, rf_model, rf_scaler)
                                 if lstm_signal is not None and rf_signal is not None:
                                     should_close = False
-                                    if side == 'Buy' and (lstm_signal == 0 or rf_signal == 0):
+                                    
+                                    # Строгая логика закрытия позиции по сигналам:
+                                    if side == 'Buy' and lstm_signal == 0 and rf_signal == 0:
                                         should_close = True
-                                    elif side == 'Sell' and (lstm_signal == 1 or rf_signal == 1):
+                                        logging.info(f"Signal to CLOSE LONG for {symbol}: LSTM={lstm_signal}, RF={rf_signal}")
+                                    elif side == 'Sell' and lstm_signal == 1 and rf_signal == 1:
                                         should_close = True
+                                        logging.info(f"Signal to CLOSE SHORT for {symbol}: LSTM={lstm_signal}, RF={rf_signal}")
+                                    else:
+                                        logging.debug(f"Holding {side} position for {symbol}. Current signals: LSTM={lstm_signal}, RF={rf_signal}")
+                                    
+                                    # 2. Проверка по Take Profit и Stop Loss
+                                    # Получаем текущую цену и цену входа
+                                    entry_price = float(pos.get('avgPrice', 0))
+                                    current_price = float(pos.get('markPrice', 0))
+                                    
+                                    if entry_price > 0 and current_price > 0 and not should_close:
+                                        if side == 'Buy':
+                                            pnl_pct = (current_price - entry_price) / entry_price
+                                            if pnl_pct >= TAKE_PROFIT_PCT:
+                                                should_close = True
+                                                logging.info(f"Take Profit reached for {symbol} LONG. PnL: {pnl_pct*100:.2f}%")
+                                            elif pnl_pct <= -STOP_LOSS_PCT:
+                                                should_close = True
+                                                logging.info(f"Stop Loss reached for {symbol} LONG. PnL: {pnl_pct*100:.2f}%")
+                                                
+                                        elif side == 'Sell':
+                                            pnl_pct = (entry_price - current_price) / entry_price
+                                            if pnl_pct >= TAKE_PROFIT_PCT:
+                                                should_close = True
+                                                logging.info(f"Take Profit reached for {symbol} SHORT. PnL: {pnl_pct*100:.2f}%")
+                                            elif pnl_pct <= -STOP_LOSS_PCT:
+                                                should_close = True
+                                                logging.info(f"Stop Loss reached for {symbol} SHORT. PnL: {pnl_pct*100:.2f}%")
                                     
                                     if should_close:
                                         close_side = 'Sell' if side == 'Buy' else 'Buy'
-                                        logging.info(f"Closing position for {symbol} due to opposite prediction. Side: {side}, LSTM: {lstm_signal}, RF: {rf_signal}")
+                                        logging.info(f"Closing position for {symbol} due to STRONG opposite prediction. Side: {side}, LSTM: {lstm_signal}, RF: {rf_signal}")
                                         try:
-                                            session.place_order(
+                                            # ВАЖНО: Для закрытия позиции на Bybit нужно использовать противоположный сайд
+                                            # и указать reduceOnly=True
+                                            order = session.place_order(
                                                 category="linear",
                                                 symbol=symbol,
                                                 side=close_side,
@@ -114,8 +147,13 @@ async def main():
                                                 qty=str(size),
                                                 reduceOnly=True
                                             )
-                                            skipped_symbols[symbol] = ITERATIONS_TO_SKIP_AFTER_CLOSE
-                                            logging.info(f"Successfully closed {symbol}. Skipping for {ITERATIONS_TO_SKIP_AFTER_CLOSE} iterations.")
+                                            
+                                            if order.get('retCode') == 0:
+                                                skipped_symbols[symbol] = ITERATIONS_TO_SKIP_AFTER_CLOSE
+                                                logging.info(f"Successfully closed {symbol}. Skipping for {ITERATIONS_TO_SKIP_AFTER_CLOSE} iterations.")
+                                            else:
+                                                logging.error(f"Failed to close {symbol}. API Response: {order}")
+                                                
                                         except Exception as e:
                                             logging.error(f"Error closing position for {symbol}: {e}")
                         except Exception as e:
@@ -132,7 +170,7 @@ async def main():
                     if symbol in skipped_symbols:
                         continue
                     try:
-                        df = await get_data_async(session, symbol, timeframe='15')
+                        df = await get_data_async(session, symbol, timeframe=TIMEFRAME)
                         if df is not None:
                             signal = predict_signal_ensemble(df, lstm_model, lstm_scaler,
                                                              rf_model, rf_scaler)
@@ -142,7 +180,9 @@ async def main():
                                                       lstm_scaler, rf_model, rf_scaler)
                     except Exception as e:
                         logging.error(f"Error processing signal for {symbol}: {e}")
-                await asyncio.sleep(300)
+                logging.info(f"Sleeping for 5 minutes before next check...")
+                for _ in range(300):
+                    await asyncio.sleep(1)
 
         await asyncio.gather(trade_signals())
     except KeyboardInterrupt:
