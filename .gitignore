@@ -1,0 +1,3 @@
+*.pyc
+trades_log.json
+trading_bot_derivatives.log
