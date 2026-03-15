@@ -115,23 +115,35 @@ async def main():
                                     current_price = float(pos.get('markPrice', 0))
                                     
                                     if entry_price > 0 and current_price > 0 and not should_close:
+                                        # Рассчитываем PnL с учетом плеча (leverage)
+                                        # По умолчанию у нас плечо 10x
+                                        leverage = float(pos.get('leverage', 10))
+                                        
                                         if side == 'Buy':
-                                            pnl_pct = (current_price - entry_price) / entry_price
+                                            # Изменение цены в процентах
+                                            price_change_pct = (current_price - entry_price) / entry_price
+                                            # Реальный PnL = Изменение цены * Плечо
+                                            pnl_pct = price_change_pct * leverage
+                                            
                                             if pnl_pct >= TAKE_PROFIT_PCT:
                                                 should_close = True
-                                                logging.info(f"Take Profit reached for {symbol} LONG. PnL: {pnl_pct*100:.2f}%")
+                                                logging.info(f"Take Profit reached for {symbol} LONG. PnL: {pnl_pct*100:.2f}% (Price change: {price_change_pct*100:.2f}%)")
                                             elif pnl_pct <= -STOP_LOSS_PCT:
                                                 should_close = True
-                                                logging.info(f"Stop Loss reached for {symbol} LONG. PnL: {pnl_pct*100:.2f}%")
+                                                logging.info(f"Stop Loss reached for {symbol} LONG. PnL: {pnl_pct*100:.2f}% (Price change: {price_change_pct*100:.2f}%)")
                                                 
                                         elif side == 'Sell':
-                                            pnl_pct = (entry_price - current_price) / entry_price
+                                            # Изменение цены в процентах (для шорта падение цены = плюс)
+                                            price_change_pct = (entry_price - current_price) / entry_price
+                                            # Реальный PnL = Изменение цены * Плечо
+                                            pnl_pct = price_change_pct * leverage
+                                            
                                             if pnl_pct >= TAKE_PROFIT_PCT:
                                                 should_close = True
-                                                logging.info(f"Take Profit reached for {symbol} SHORT. PnL: {pnl_pct*100:.2f}%")
+                                                logging.info(f"Take Profit reached for {symbol} SHORT. PnL: {pnl_pct*100:.2f}% (Price change: {price_change_pct*100:.2f}%)")
                                             elif pnl_pct <= -STOP_LOSS_PCT:
                                                 should_close = True
-                                                logging.info(f"Stop Loss reached for {symbol} SHORT. PnL: {pnl_pct*100:.2f}%")
+                                                logging.info(f"Stop Loss reached for {symbol} SHORT. PnL: {pnl_pct*100:.2f}% (Price change: {price_change_pct*100:.2f}%)")
                                     
                                     if should_close:
                                         close_side = 'Sell' if side == 'Buy' else 'Buy'
