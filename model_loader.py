@@ -18,6 +18,7 @@ def load_lstm_model_func():
         try:
             from tensorflow.keras.models import load_model
             
+            # Добавлено: игнорируем аргументы, которые могут вызывать ошибку при загрузке
             model = load_model('lstm_trading_model.h5', 
                              custom_objects={'FocalLoss': FocalLoss},
                              compile=False)
@@ -26,6 +27,13 @@ def load_lstm_model_func():
             return model, scaler
         except Exception as e:
             logging.error(f"Error loading LSTM model or scaler: {e}")
+            # Если не удалось загрузить, удаляем битые файлы, чтобы они пересоздались
+            try:
+                os.remove('lstm_trading_model.h5')
+                os.remove('lstm_scaler.pkl')
+                logging.info("Deleted corrupted LSTM model files.")
+            except:
+                pass
             return None, None
     logging.warning("LSTM model or scaler files not found.")
     return None, None
@@ -38,6 +46,13 @@ def load_random_forest_model_func():
             return model, scaler
         except Exception as e:
             logging.error(f"Error loading Random Forest model or scaler: {e}")
+            # Если не удалось загрузить, удаляем битые файлы, чтобы они пересоздались
+            try:
+                os.remove('random_forest_model.pkl')
+                os.remove('random_forest_scaler.pkl')
+                logging.info("Deleted corrupted Random Forest model files.")
+            except:
+                pass
             return None, None
     logging.warning("Random Forest model or scaler files not found.")
     return None, None

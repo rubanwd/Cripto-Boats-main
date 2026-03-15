@@ -59,7 +59,10 @@ async def main():
         min_amounts = await fetch_min_amounts(session, top_symbols, markets)
         lstm_model, lstm_scaler = await asyncio.to_thread(load_lstm_model_func)
         rf_model, rf_scaler = await asyncio.to_thread(load_random_forest_model_func)
+        
+        # Если модели не загрузились, обучаем их
         if not lstm_model or not rf_model:
+            logging.info("Models not found or failed to load. Starting training process...")
             lstm_model, lstm_scaler = await train_lstm_model(session, top_symbols)
             if lstm_model and lstm_scaler:
                 rf_model, rf_scaler = await train_random_forest_model_wrapper(top_symbols, session)
