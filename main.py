@@ -84,10 +84,12 @@ async def main():
                 for sym in symbols_to_remove:
                     del skipped_symbols[sym]
 
+                open_symbols = set()
                 # 2. Check open positions and close if opposite signal
                 try:
                     positions_response = session.get_positions(category="linear", settleCoin="USDT")
                     open_positions = [p for p in positions_response.get('result', {}).get('list', []) if float(p.get('size', '0')) > 0]
+                    open_symbols = {p['symbol'] for p in open_positions}
                     
                     for pos in open_positions:
                         symbol = pos['symbol']
@@ -183,6 +185,8 @@ async def main():
                     continue
                 for symbol in top_symbols:
                     if symbol in skipped_symbols:
+                        continue
+                    if symbol in open_symbols:
                         continue
                     try:
                         df = await get_data_async(session, symbol, timeframe=TIMEFRAME)
