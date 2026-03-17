@@ -299,8 +299,13 @@ async def manage_position(session, symbol, signal, usdt_balance, min_amounts,
         if signal_pred == 1:
             try:
                 # Рассчитываем цены для TP и SL
-                take_profit_price = price * (1 + TAKE_PROFIT_PCT)
-                stop_loss_price = price * (1 - STOP_LOSS_PCT)
+                # Если TAKE_PROFIT_PCT = 0.30 (30% ROI), а плечо 10x, то цена должна измениться на 3% (0.03)
+                leverage = 10
+                actual_tp_pct = TAKE_PROFIT_PCT / leverage
+                actual_sl_pct = STOP_LOSS_PCT / leverage
+                
+                take_profit_price = price * (1 + actual_tp_pct)
+                stop_loss_price = price * (1 - actual_sl_pct)
                 
                 # Округляем цены до нужного количества знаков (как у текущей цены)
                 price_str = str(price)
@@ -342,8 +347,13 @@ async def manage_position(session, symbol, signal, usdt_balance, min_amounts,
         elif signal_pred == 0:
             try:
                 # Рассчитываем цены для TP и SL для шорта
-                take_profit_price = price * (1 - TAKE_PROFIT_PCT)
-                stop_loss_price = price * (1 + STOP_LOSS_PCT)
+                # Если TAKE_PROFIT_PCT = 0.30 (30% ROI), а плечо 10x, то цена должна измениться на 3% (0.03)
+                leverage = 10
+                actual_tp_pct = TAKE_PROFIT_PCT / leverage
+                actual_sl_pct = STOP_LOSS_PCT / leverage
+                
+                take_profit_price = price * (1 - actual_tp_pct)
+                stop_loss_price = price * (1 + actual_sl_pct)
                 
                 # Округляем цены до нужного количества знаков
                 price_str = str(price)

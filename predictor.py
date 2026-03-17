@@ -20,7 +20,11 @@ def get_separate_signals(df, lstm_model, lstm_scaler, rf_model, rf_scaler, time_
         X_input_lstm = data_scaled[-time_steps:]
         X_input_lstm = np.expand_dims(X_input_lstm, axis=0)
         lstm_pred = lstm_model.predict(X_input_lstm, verbose=0)[0][0]
-        lstm_signal = 1 if lstm_pred > 0.55 else (0 if lstm_pred < 0.45 else -1)
+        
+        # Смягчаем пороги для сигналов, чтобы поощрить открытие шортов.
+        # Так как данные сбалансированы 50/50, выход модели должен быть около 0.5.
+        # > 0.52 = Long, < 0.48 = Short
+        lstm_signal = 1 if lstm_pred > 0.52 else (0 if lstm_pred < 0.48 else -1)
         
         X_input_rf = data_scaled[-time_steps:].flatten().reshape(1, -1)
         X_input_rf_scaled = rf_scaler.transform(X_input_rf)
@@ -51,7 +55,11 @@ def predict_signal_ensemble(df,
         X_input_lstm = data_scaled[-time_steps:]
         X_input_lstm = np.expand_dims(X_input_lstm, axis=0)
         lstm_pred = lstm_model.predict(X_input_lstm, verbose=0)[0][0]
-        lstm_signal = 1 if lstm_pred > 0.55 else (0 if lstm_pred < 0.45 else -1) # Добавлена зона неопределенности
+        
+        # Смягчаем пороги для сигналов, чтобы поощрить открытие шортов.
+        # Так как данные сбалансированы 50/50, выход модели должен быть около 0.5.
+        # > 0.52 = Long, < 0.48 = Short
+        lstm_signal = 1 if lstm_pred > 0.52 else (0 if lstm_pred < 0.48 else -1) # Добавлена зона неопределенности
         
         X_input_rf = data_scaled[-time_steps:].flatten().reshape(1, -1)
         X_input_rf_scaled = rf_scaler.transform(X_input_rf)
