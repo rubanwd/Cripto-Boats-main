@@ -43,11 +43,13 @@ async def get_data_async(session, symbol, timeframe=TIMEFRAME, limit=1000):
     try:
         # map timeframe to pybit format if needed (e.g., '15m' -> '15')
         tf = timeframe.replace('m', '')
+        # Максимальный лимит Bybit для kline - 1000. Если нужно больше, нужна пагинация.
+        # Пока оставим 1000, так как это максимум для одного запроса.
         response = session.get_kline(
             category="linear",
             symbol=symbol,
             interval=tf,
-            limit=limit
+            limit=min(limit, 1000)
         )
         
         lst = response.get("result", {}).get("list", [])

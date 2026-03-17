@@ -32,10 +32,10 @@ exchange_config['headers'] = {
 ITERATIONS_TO_SKIP_AFTER_CLOSE = 2
 
 # Таймфрейм для работы бота (в минутах)
-TIMEFRAME = '5'
+TIMEFRAME = '15'
 
 # Количество свечей (time_steps) для анализа истории нейросетями
-TIME_STEPS = 120
+TIME_STEPS = 1000
 
 # Настройки Take Profit и Stop Loss (в процентах от маржи/депозита в сделке)
 # Так как у нас плечо 10x, то изменение цены на 1% дает 10% PnL

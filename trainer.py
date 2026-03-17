@@ -27,13 +27,31 @@ async def train_lstm_model(exchange, symbols):
                 continue
             scaler = StandardScaler()
             data_scaled = scaler.fit_transform(data)
-            X, y = [], []
+            
+            # Балансировка данных: находим индексы растущих и падающих свечей
+            X_temp, y_temp = [], []
             for i in range(TIME_STEPS, len(data_scaled) - 1):
-                X.append(data_scaled[i - TIME_STEPS:i])
-                y.append(1 if df['close'].iloc[i + 1] > df['close'].iloc[i] else 0)
-            if len(X) > 0:
-                X_list.append(np.array(X))
-                y_list.append(np.array(y))
+                X_temp.append(data_scaled[i - TIME_STEPS:i])
+                y_temp.append(1 if df['close'].iloc[i + 1] > df['close'].iloc[i] else 0)
+                
+            y_temp = np.array(y_temp)
+            X_temp = np.array(X_temp)
+            
+            # Принудительно уравниваем количество лонгов и шортов (undersampling)
+            ones_indices = np.where(y_temp == 1)[0]
+            zeros_indices = np.where(y_temp == 0)[0]
+            
+            min_class_count = min(len(ones_indices), len(zeros_indices))
+            if min_class_count > 0:
+                # Выбираем случайные индексы так, чтобы их было поровну
+                ones_sampled = np.random.choice(ones_indices, min_class_count, replace=False)
+                zeros_sampled = np.random.choice(zeros_indices, min_class_count, replace=False)
+                
+                balanced_indices = np.concatenate([ones_sampled, zeros_sampled])
+                np.random.shuffle(balanced_indices) # Перемешиваем
+                
+                X_list.append(X_temp[balanced_indices])
+                y_list.append(y_temp[balanced_indices])
     if not X_list:
         logging.error("Failed to collect data for LSTM training")
         return None, None
@@ -52,12 +70,10 @@ async def train_lstm_model(exchange, symbols):
     split = int(0.8 * len(X_all))
     X_train, X_test = X_all[:split], X_all[split:]
     y_train, y_test = y_all[:split], y_all[split:]
-    class_weights_dict = class_weight.compute_class_weight(
-        'balanced', classes=np.unique(y_train), y=y_train)
-    class_weights = {
-        i: class_weights_dict[i]
-        for i in range(len(class_weights_dict))
-    }
+    
+    # Теперь классы сбалансированы вручную, веса можно оставить равными
+    class_weights = {0: 1.0, 1: 1.0}
+    
     hypermodel = LSTMHyperModel()
     tuner = RandomSearch(hypermodel,
                          objective='val_accuracy',
@@ -122,13 +138,29 @@ async def train_random_forest_model_wrapper(top_symbols, exchange):
                 continue
             scaler = StandardScaler()
             data_scaled = scaler.fit_transform(data)
-            X, y = [], []
+            
+            # Балансировка данных для Random Forest
+            X_temp, y_temp = [], []
             for i in range(TIME_STEPS, len(data_scaled) - 1):
-                X.append(data_scaled[i - TIME_STEPS:i].flatten())
-                y.append(1 if df['close'].iloc[i + 1] > df['close'].iloc[i] else 0)
-            if len(X) > 0:
-                X_combined.extend(X)
-                y_combined.extend(y)
+                X_temp.append(data_scaled[i - TIME_STEPS:i].flatten())
+                y_temp.append(1 if df['close'].iloc[i + 1] > df['close'].iloc[i] else 0)
+                
+            y_temp = np.array(y_temp)
+            X_temp = np.array(X_temp)
+            
+            ones_indices = np.where(y_temp == 1)[0]
+            zeros_indices = np.where(y_temp == 0)[0]
+            
+            min_class_count = min(len(ones_indices), len(zeros_indices))
+            if min_class_count > 0:
+                ones_sampled = np.random.choice(ones_indices, min_class_count, replace=False)
+                zeros_sampled = np.random.choice(zeros_indices, min_class_count, replace=False)
+                
+                balanced_indices = np.concatenate([ones_sampled, zeros_sampled])
+                np.random.shuffle(balanced_indices)
+                
+                X_combined.extend(X_temp[balanced_indices])
+                y_combined.extend(y_temp[balanced_indices])
     if X_combined and y_combined:
         X_all = np.array(X_combined)
         y_all = np.array(y_combined)

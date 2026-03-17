@@ -98,7 +98,7 @@ async def main():
                         
                         try:
                             # 1. Проверка по сигналам нейросетей
-                            df = await get_data_async(session, symbol, timeframe=TIMEFRAME)
+                            df = await get_data_async(session, symbol, timeframe=TIMEFRAME, limit=1000)
                             if df is not None:
                                 lstm_signal, rf_signal = get_separate_signals(df, lstm_model, lstm_scaler, rf_model, rf_scaler)
                                 if lstm_signal is not None and rf_signal is not None:
@@ -189,7 +189,7 @@ async def main():
                     if symbol in open_symbols:
                         continue
                     try:
-                        df = await get_data_async(session, symbol, timeframe=TIMEFRAME)
+                        df = await get_data_async(session, symbol, timeframe=TIMEFRAME, limit=1000)
                         if df is not None:
                             signal = predict_signal_ensemble(df, lstm_model, lstm_scaler,
                                                              rf_model, rf_scaler)
@@ -199,8 +199,8 @@ async def main():
                                                       lstm_scaler, rf_model, rf_scaler)
                     except Exception as e:
                         logging.error(f"Error processing signal for {symbol}: {e}")
-                logging.info(f"Sleeping for 5 minutes before next check...")
-                for _ in range(300):
+                logging.info(f"Sleeping for 15 minutes before next check...")
+                for _ in range(900):
                     await asyncio.sleep(1)
 
         await asyncio.gather(trade_signals())

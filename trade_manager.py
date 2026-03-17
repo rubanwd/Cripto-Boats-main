@@ -291,7 +291,7 @@ async def manage_position(session, symbol, signal, usdt_balance, min_amounts,
             )
             return
             
-        df = await get_data_async(session, symbol, timeframe=TIMEFRAME, limit=300)
+        df = await get_data_async(session, symbol, timeframe=TIMEFRAME, limit=1000)
         if df is None:
             return
             

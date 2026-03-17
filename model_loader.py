@@ -32,12 +32,12 @@ def load_lstm_model_func():
                 os.remove('lstm_trading_model.h5')
                 logging.info("Deleted corrupted lstm_trading_model.h5")
             except Exception as ex:
-                logging.error(f"Failed to delete lstm_trading_model.h5: {ex}")
+                pass
             try:
                 os.remove('lstm_scaler.pkl')
                 logging.info("Deleted corrupted lstm_scaler.pkl")
             except Exception as ex:
-                logging.error(f"Failed to delete lstm_scaler.pkl: {ex}")
+                pass
             return None, None
     logging.warning("LSTM model or scaler files not found.")
     return None, None
@@ -55,12 +55,12 @@ def load_random_forest_model_func():
                 os.remove('random_forest_model.pkl')
                 logging.info("Deleted corrupted random_forest_model.pkl")
             except Exception as ex:
-                logging.error(f"Failed to delete random_forest_model.pkl: {ex}")
+                pass
             try:
                 os.remove('random_forest_scaler.pkl')
                 logging.info("Deleted corrupted random_forest_scaler.pkl")
             except Exception as ex:
-                logging.error(f"Failed to delete random_forest_scaler.pkl: {ex}")
+                pass
             return None, None
     logging.warning("Random Forest model or scaler files not found.")
     return None, None
