@@ -35,11 +35,14 @@ ITERATIONS_TO_SKIP_AFTER_CLOSE = 2
 TIMEFRAME = '15'
 
 # Количество свечей (time_steps) для анализа истории нейросетями
-TIME_STEPS = 1000
+TIME_STEPS = 120
 
 # Настройки Take Profit и Stop Loss (в процентах от маржи/депозита в сделке)
 # Так как у нас плечо 10x, то изменение цены на 1% дает 10% PnL
 TAKE_PROFIT_PCT = 0.30  # Закрывать в плюс при 30% прибыли (ROI)
 STOP_LOSS_PCT = 0.15    # Закрывать в минус при 15% убытка (ROI)
+
+# Разрешить ли боту открывать новые позиции по монете, если по ней уже есть открытая позиция
+ALLOW_MULTIPLE_POSITIONS_PER_SYMBOL = True
 
 

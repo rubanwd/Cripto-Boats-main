@@ -10,7 +10,7 @@ import asyncio
 import ccxt.async_support as ccxt_async
 import logging
 import time
-from config import exchange_config, ITERATIONS_TO_SKIP_AFTER_CLOSE, TIMEFRAME, TAKE_PROFIT_PCT, STOP_LOSS_PCT
+from config import exchange_config, ITERATIONS_TO_SKIP_AFTER_CLOSE, TIMEFRAME, TAKE_PROFIT_PCT, STOP_LOSS_PCT, ALLOW_MULTIPLE_POSITIONS_PER_SYMBOL
 
 async def get_time_difference():
     try:
@@ -186,8 +186,11 @@ async def main():
                 for symbol in top_symbols:
                     if symbol in skipped_symbols:
                         continue
-                    if symbol in open_symbols:
+                    
+                    # Пропускаем монету, если по ней уже есть позиция И запрещено открывать несколько
+                    if not ALLOW_MULTIPLE_POSITIONS_PER_SYMBOL and symbol in open_symbols:
                         continue
+                        
                     try:
                         df = await get_data_async(session, symbol, timeframe=TIMEFRAME, limit=1000)
                         if df is not None:
